@@ -1,0 +1,120 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: eci-pod-exporter
+  name: eci-pod-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eci-pod-exporter
+  template:
+    metadata:
+      labels:
+        app: eci-pod-exporter
+    spec:
+      containers:
+      - args:
+        - --additional-label=opsservice
+        image: huangyiyong/eci-pod-exporter:v1.0.0
+        imagePullPolicy: Always
+        name: eci-pod-exporter
+        ports:
+        - containerPort: 9099
+          name: http
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      serviceAccountName: eci-pod-exporter
+      
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: eci-pod-exporter
+  name: eci-pod-exporter
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - 'list'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: eci-pod-exporter
+  name: eci-pod-exporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: eci-pod-exporter
+subjects:
+  - kind: ServiceAccount
+    name: eci-pod-exporter
+    namespace: monitoring
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/name: eci-pod-exporter
+  name: eci-pod-exporter
+  namespace: monitoring
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app-metrics: eci-pod-exporter
+  name: eci-pod-exporter-metrics-exposer
+  namespace: monitoring
+spec:
+  ports:
+    - name: app-metrics
+      port: 9099
+      protocol: TCP
+      targetPort: 9099
+  selector:
+    app: eci-pod-exporter
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    system-app: "true"
+  name: eci-pod-exporter-metrics-exposer
+  namespace: monitoring
+spec:
+  endpoints:
+    - bearerTokenSecret:
+        key: ""
+      path: /metrics
+      port: app-metrics
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  selector:
+    matchLabels:
+      app-metrics: eci-pod-exporter
+
