@@ -12,7 +12,7 @@ eci pod 的 resource 配置信息是添加在 annotation 里的，无法通过 P
 
 ### Getting start
 ```shell script
-$ git clone https://git.qutoutiao.net/paas-k8s/eci-pod-exporter.git
+$ git clone https://github.com/YiyongHuang/eci-pod-exporter.git
 ```
 ```shell script
 $ make image
